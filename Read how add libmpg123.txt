@@ -1,0 +1,64 @@
+https://mega.nz/file/GMASWYRa#PR4I8KayJd4y5KH2-owlfSffSyIpdf-ZuA7KBI7KPrk
+
+https://mega.nz/file/PB4DyQrK#Vo7pmvarSfGZ0ebBR3v9Ci4huGgmvk1D0SF5x8zC9oQ
+
+https://mega.nz/file/TJxT3JjL#FEKukpE45iPjQCwQE3kq__VwenG2kNXKO06EVRTMofg
+
+https://mega.nz/file/2YBHRJKJ#h-x41Khg6yygOvZHxMG-pXMUe6RDzHYLfTKOUfPgd0s
+
+
+Bin Editor width libmpg123 (EXE & dlls)
+https://mega.nz/file/2YBHRJKJ#h-x41Khg6yygOvZHxMG-pXMUe6RDzHYLfTKOUfPgd0s
+
+
+Update:
+Now use libmpg123 to play Mp3 files by streaming audio, this is improved
+to use to in computer with low Cpu speed and Ram Memory.
+
+Tested with AlwaysRememberUsDJTons.mp3 on shop old computer and 100%.
+No extra noises from sistem, no delays.
+
+---
+
+
+
+
+Only to use from the source code 
+
+On source code projat main.cpp
+#include "mpg123.h"
+
+On root project:
+mpg123.h
+fmt123.h
+
+mpg123.h need fmt123.h
+so in mpg123.h is already 
+#include "fmt123.h"
+
+---
+
+In Bin Release or Debug
+Whwre is the Bin Editor executable
+libmpg123-0.dll
+
+---
+
+In MinGw lib folder:
+libmpg123.a
+libmpg123.dll.a
+libmpg123.pc
+
+(This was complied from source code)
+
+In Settings > Compiler >Linker settings
+Add libmpg123 and press Ok.
+
+----------------------------------------
+
+
+
+
+
+ 
+

@@ -1,0 +1,330 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bin Editor Documentation - V.1.7</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Same styles as in the original documentation */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+        }
+        .sidebar {
+            width: 250px;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+        }
+        .sidebar h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+        .sidebar ul li a:hover {
+            color: #007bff;
+        }
+        .content {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            margin-left: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .content h1, .content h2, .content h3 {
+            color: #007bff;
+        }
+        .content section {
+            margin-bottom: 40px;
+        }
+        .code-snippet {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: auto;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background: #007bff;
+            color: #fff;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+            .content {
+                margin-left: 0;
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Bin Editor Documentation</h2>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="#functions">Core Functions</a></li>
+                <li><a href="#file-preview">File Preview Capabilities</a></li>
+                <li><a href="#usage">Usage Instructions</a></li>
+                <li><a href="#changelog">Changelog</a></li>
+            </ul>
+        </div>
+        <div class="content">
+            <h1>Bin Editor V.1.7 Documentation - By E.M - Softy</h1>
+            <!-- Other sections (Overview, Installation) remain unchanged -->
+            <section id="functions">
+                <h2>Core Functions</h2>
+                <p>Bin Editor provides the following core functionalities:</p>
+                <div class="table-container">
+                    <table>
+                        <tr>
+                            <th>Function</th>
+                            <th>Description</th>
+                            <th>Usage</th>
+                        </tr>
+                        <tr>
+                            <td>Open BIN File</td>
+                            <td>Loads an existing .bin file and its associated metadata (.h) into the editor for viewing and modification.</td>
+                            <td>File > Open > Select a .bin file.</td>
+                        </tr>
+                        <tr>
+                            <td>Create New BIN File</td>
+                            <td>Creates a new .bin file from a selected folder, including all eligible files and subfolders.</td>
+                            <td>File > Create New Bin > Select folder and file name.</td>
+                        </tr>
+                        <tr>
+                            <td>Add Files/Folders</td>
+                            <td>Adds files or entire folders to the binary file, organizing them in the temporary directory structure.</td>
+                            <td>File > Add > Select files or folders, or drag and drop into the listbox.</td>
+                        </tr>
+                        <tr>
+                            <td>Drag & Drop Files</td>
+                            <td>Allows dragging files or folders from Windows Explorer into the listbox to add them to the binary file, with automatic path normalization.</td>
+                            <td>Drag files/folders from Explorer and drop onto the listbox, optionally targeting a specific folder.</td>
+                        </tr>
+                        <tr>
+                            <td>Remove Files</td>
+                            <td>Removes selected files from the binary file and temporary directory.</td>
+                            <td>Select files in listbox > Click Remove.</td>
+                        </tr>
+                        <tr>
+                            <td>Replace File</td>
+                            <td>Replaces a selected file in the binary structure with a new file.</td>
+                            <td>Select one file in listbox > Click Replace > Select new file.</td>
+                        </tr>
+                        <tr>
+                            <td>Export Files</td>
+                            <td>Exports selected files from the binary structure to a chosen folder.</td>
+                            <td>Select files in listbox > Click Export > Select destination folder.</td>
+                        </tr>
+                        <tr>
+                            <td>Save BIN File</td>
+                            <td>Saves the modified binary file and generates an updated metadata file (.h).</td>
+                            <td>File > Save or Save As.</td>
+                        </tr>
+                        <tr>
+                            <td>Preview Image</td>
+                            <td>Displays image files (e.g., PNG, JPEG) stored in the binary or temporary directory.</td>
+                            <td>Right-click file in listbox > Preview Image.</td>
+                        </tr>
+                        <tr>
+                            <td>Preview Audio</td>
+                            <td>Plays audio files (e.g., WAV, MP3) stored in the binary or temporary directory.</td>
+                            <td>Right-click file in listbox > Preview Audio.</td>
+                        </tr>
+                        <tr>
+                            <td>Log Operations</td>
+                            <td>Records user actions and errors to a log file (bin_editor.log).</td>
+                            <td>View > Show Log or check bin_editor.log file.</td>
+                        </tr>
+                    </table>
+                </div>
+            </section>
+            <section id="file-preview">
+                <h2>File Preview Capabilities</h2>
+                <h3>Image Preview</h3>
+                <p>Bin Editor can preview image files stored in the binary structure or temporary directory. Supported formats include:</p>
+                <ul>
+                    <li>PNG (.png)</li>
+                    <li>JPEG (.jpg, .jpeg)</li>
+                    <li>GIF (.gif, .GIF)</li>
+                    <li>BMP (.bmp)</li>
+                </ul>
+                <p><strong>How it works:</strong> Right-click an image file in the listbox and select "Preview Image" to open it in a resizable window using GDI+. Images added via drag and drop are immediately available for preview.</p>
+                <p><strong>Example:</strong> To preview a PNG file:</p>
+                <div class="code-snippet">
+                    Right-click "image.png" in listbox > Select Preview Image
+                </div>
+                <h3>Audio Preview</h3>
+                <p>Bin Editor supports playback of audio files stored in the binary structure or temporary directory. Supported formats include:</p>
+                <ul>
+                    <li>WAV (.wav)</li>
+                    <li>MP3 (.mp3)</li>
+                    <li>OGG (.ogg)</li>
+                    <li>WMA (.wma)</li>
+                </ul>
+                <p><strong>How it works:</strong> Right-click an audio file in the listbox and select "Preview Audio" to open a playback window with Play and Stop buttons. Audio files added via drag and drop are immediately available for preview.</p>
+                <p><strong>Example:</strong> To play an MP3 file:</p>
+                <div class="code-snippet">
+                    Right-click "audio.mp3" in listbox > Select Preview Audio > Click Play
+                </div>
+                <h3>Drag & Drop Integration</h3>
+                <p>Files or folders dragged and dropped into the listbox are added to the binary structure and stored in the temporary directory. These files can be previewed immediately after being added, provided they are in a supported format.</p>
+                <p><strong>Example:</strong> To add and preview a dropped image:</p>
+                <div class="code-snippet">
+                    Drag "image.png" from Explorer to listbox > Right-click "image.png" > Select Preview Image
+                </div>
+                <p><strong>Limitations:</strong></p>
+                <ul>
+                    <li>Restricted files (e.g., .bin, .h, bin_editor.log, metadata.h) are skipped during drag and drop.</li>
+                    <li>Files larger than 1GB are not added to prevent performance issues.</li>
+                    <li>Folder hierarchies are preserved, but paths are normalized to avoid "./" prefixes.</li>
+                    <li>Audio playback for MP3 requires libmpg123.dll or a codec pack for MCI fallback.</li>
+                </ul>
+            </section>
+            <section id="usage">
+                <h2>Usage Instructions</h2>
+                <p>Follow these steps to use Bin Editor effectively:</p>
+                <ol>
+                    <li><strong>Launch the Application:</strong> Open Bin Editor from the Start menu or desktop shortcut.</li>
+                    <li><strong>Create or Open a BIN File:</strong>
+                        <ul>
+                            <li><strong>Create:</strong> File > Create New Bin > Select a folder and specify a .bin file name.</li>
+                            <li><strong>Open:</strong> File > Open > Select an existing .bin file.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Add Files/Folders:</strong>
+                        <ul>
+                            <li><strong>Via Menu:</strong> File > Add > Select files or folders, choose a target folder within the temporary directory.</li>
+                            <li><strong>Via Drag & Drop:</strong> Drag files or folders from Windows Explorer and drop them onto the listbox. Drop on a specific item to add to its parent folder, or drop elsewhere for the root directory.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Preview Multimedia:</strong>
+                        <ul>
+                            <li><strong>Image:</strong> Right-click an image file (e.g., .png, .jpg) in the listbox > Preview Image.</li>
+                            <li><strong>Audio:</strong> Right-click an audio file (e.g., .mp3, .wav) in the listbox > Preview Audio > Click Play.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Manage Files:</strong>
+                        <ul>
+                            <li><strong>Remove:</strong> Select files in the listbox > Click Remove > Confirm.</li>
+                            <li><strong>Replace:</strong> Select one file > Click Replace > Select a new file.</li>
+                            <li><strong>Export:</strong> Select files > Click Export > Choose destination folder.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Save Changes:</strong> File > Save or Save As to save the .bin file and update the metadata (.h) file.</li>
+                    <li><strong>Check Logs:</strong> View > Show Log or open bin_editor.log to review operations and errors.</li>
+                </ol>
+                <p><strong>Tips:</strong></p>
+                <ul>
+                    <li>Use drag and drop to quickly add multiple files or folders.</li>
+                    <li>Drop files onto a listbox item to organize them in subfolders within the temporary directory.</li>
+                    <li>Ensure dropped files are in supported formats for previewing (e.g., PNG for images, MP3 for audio).</li>
+                    <li>The maximize button is disabled; use the minimize button or resize the window as needed.</li>
+                    <li>Check bin_editor.log for detailed error messages if drag and drop or previews fail.</li>
+                </ul>
+            </section>
+            <section id="changelog">
+                <h2>Changelog</h2>
+                <p><strong>Version 1.7 (Latest):</strong></p>
+                <ul>
+                    <li>Added drag and drop support for files and folders with path normalization (removes "./" prefixes).</li>
+                    <li>Improved image preview performance for large files.</li>
+                    <li>Disabled maximize button on the main window.</li>
+                    <li>Fixed bugs in log file generation.</li>
+                </ul>
+                <p><strong>Version 1.6:</strong></p>
+                <ul>
+                    <li>Introduced audio preview for WAV and MP3.</li>
+                    <li>Added folder selection for adding files.</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

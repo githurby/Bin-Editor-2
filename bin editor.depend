@@ -1,0 +1,23 @@
+# depslib dependency file v1.0
+1757921169 source:e:\projeto\bin editor\main.cpp
+	<windows.h>
+	<commctrl.h>
+	<windowsx.h>
+	<string>
+	<vector>
+	<fstream>
+	<filesystem>
+	<sstream>
+	<regex>
+	<set>
+	<ctime>
+	<shlobj.h>
+	<shellapi.h>
+	<gdiplus.h>
+	<SFML/Audio.hpp>
+	<tuple>
+	<algorithm>
+	<chrono>
+	<map>
+	<algorithm>
+
