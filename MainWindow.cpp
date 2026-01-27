@@ -424,6 +424,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 }
 
                 try {
+                    // Defensive sanity-check: ensure GetTempDir() looks valid before creating directories
+                    std::wstring tempDirW = editor->GetTempDir().wstring();
+                    if (tempDirW.empty() || tempDirW.find(L'\0') != std::wstring::npos) {
+                        MessageBoxW(hwnd, (std::wstring(L"Invalid temp directory path: ") + tempDirW).c_str(), L"Error", MB_OK | MB_ICONERROR);
+                        in.close();
+                        break;
+                    }
+
                     if (std::filesystem::exists(editor->GetTempDir())) {
                         std::filesystem::remove_all(editor->GetTempDir());
                     }
@@ -887,21 +895,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 auto newTempDir = editor->GetTempDir();
                 if (oldTempDir != newTempDir && !oldTempDir.empty()) {
                     try {
-                        if (std::filesystem::exists(newTempDir)) {
-                            std::filesystem::remove_all(newTempDir);
-                        }
-                        std::filesystem::create_directories(newTempDir);
-                        for (const auto& entry : std::filesystem::recursive_directory_iterator(oldTempDir, std::filesystem::directory_options::skip_permission_denied)) {
-                            std::filesystem::path relative = std::filesystem::relative(entry.path(), oldTempDir);
-                            std::filesystem::path dest = newTempDir / relative;
-                            if (entry.is_directory()) {
-                                std::filesystem::create_directories(dest);
-                            } else {
-                                std::filesystem::copy_file(entry.path(), dest, std::filesystem::copy_options::overwrite_existing);
+                        // Defensive sanity-check for newTempDir
+                        std::wstring newTempW = newTempDir.wstring();
+                        if (newTempW.empty() || newTempW.find(L'\0') != std::wstring::npos) {
+                            MessageBoxW(hwnd, (std::wstring(L"Invalid temp directory path for migration: ") + newTempW).c_str(), L"Error", MB_OK | MB_ICONERROR);
+                            // Skip migration to avoid filesystem errors
+                        } else {
+                            if (std::filesystem::exists(newTempDir)) {
+                                std::filesystem::remove_all(newTempDir);
                             }
+                            std::filesystem::create_directories(newTempDir);
+                            for (const auto& entry : std::filesystem::recursive_directory_iterator(oldTempDir, std::filesystem::directory_options::skip_permission_denied)) {
+                                std::filesystem::path relative = std::filesystem::relative(entry.path(), oldTempDir);
+                                std::filesystem::path dest = newTempDir / relative;
+                                if (entry.is_directory()) {
+                                    std::filesystem::create_directories(dest);
+                                } else {
+                                    std::filesystem::copy_file(entry.path(), dest, std::filesystem::copy_options::overwrite_existing);
+                                }
+                            }
+                            std::filesystem::remove_all(oldTempDir);
+                            editor->RemoveTempDir(oldTempDir);
                         }
-                        std::filesystem::remove_all(oldTempDir);
-                        editor->RemoveTempDir(oldTempDir);
                     } catch (const std::exception& e) {
                         MessageBoxW(hwnd, (std::wstring(L"Error migrating temp files: ") + BinEditorUtils::ToWString(e.what())).c_str(), L"Error", MB_OK | MB_ICONERROR);
                     }
@@ -965,6 +980,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 editor->SetBinPath(binPathStr);
 
                 try {
+                    // Defensive sanity-check: ensure GetTempDir() looks valid before creating directories
+                    std::wstring tempDirW = editor->GetTempDir().wstring();
+                    if (tempDirW.empty() || tempDirW.find(L'\0') != std::wstring::npos) {
+                        MessageBoxW(hwnd, (std::wstring(L"Invalid temp directory path: ") + tempDirW).c_str(), L"Error", MB_OK | MB_ICONERROR);
+                        break;
+                    }
+
                     if (std::filesystem::exists(editor->GetTempDir())) {
                         std::filesystem::remove_all(editor->GetTempDir());
                     }

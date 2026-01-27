@@ -33,17 +33,42 @@ void BinEditor::CleanupCurrentTemp() {
 
 const std::vector<BinEntry>& BinEditor::GetEntries() const { return binEntries; }
 const std::string& BinEditor::GetBinPath() const { return binPathOriginal; }
+
 void BinEditor::SetBinPath(const std::string& path) {
     if (path == binPathOriginal) return;
-    auto oldParent = std::filesystem::path(BinEditorUtils::ToWString(binPathOriginal)).parent_path();
-    auto newParent = std::filesystem::path(BinEditorUtils::ToWString(path)).parent_path();
+
+    // Use u8path so we treat the std::string as UTF-8 safely on Windows
+    std::filesystem::path oldParent;
+    if (!binPathOriginal.empty()) {
+        try {
+            oldParent = std::filesystem::u8path(binPathOriginal).parent_path();
+        } catch (...) {
+            oldParent = std::filesystem::path();
+        }
+    }
+
+    std::filesystem::path newParent;
+    try {
+        newParent = std::filesystem::u8path(path).parent_path();
+    } catch (...) {
+        newParent = std::filesystem::path();
+    }
+
     binPathOriginal = path;
+
     if (newParent != oldParent || tempDir.empty()) {
         std::string tempDirName = BinEditorUtils::GenerateUniqueTempDir();
+        // sanitize generated name: remove any slashes/backslashes/colons etc
+        for (auto& c : tempDirName) {
+            if (c == '/' || c == '\\' || c == ':' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+                c = '_';
+            }
+        }
         tempDir = tempBinsPath / tempDirName;
         tempDirs.insert(tempDir);
     }
 }
+
 const std::filesystem::path& BinEditor::GetTempDir() const { return tempDir; }
 std::vector<BinEntry>& BinEditor::GetEntriesMutable() { return binEntries; }
 bool BinEditor::IsBinLoaded() const { return !binPathOriginal.empty() && !tempDir.empty(); }

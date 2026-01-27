@@ -4,6 +4,8 @@
 #include <windows.h>
 #include <sstream>
 #include <filesystem>
+#include <random>
+#include <chrono>
 
 namespace BinEditorUtils {
     std::string getExt(const std::string& name) {
@@ -42,26 +44,48 @@ namespace BinEditorUtils {
     }
 
     std::wstring ToWString(const std::string& str) {
-        size_t len = str.length();
-        std::wstring wstr;
-        wstr.resize(len + 1);
-        MultiByteToWideChar(CP_UTF8, 0, str.c_str(), len + 1, &wstr[0], len + 1);
+        if (str.empty()) return std::wstring();
+        // Query required size (includes terminating null)
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+        if (size_needed <= 0) return std::wstring();
+        // Allocate string for characters excluding terminating null
+        std::wstring wstr(size_needed - 1, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &wstr[0], size_needed);
         return wstr;
     }
 
     std::string ToString(const std::wstring& wstr) {
-        size_t len = wstr.length();
-        std::string str;
-        str.resize(len + 1);
-        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), len + 1, &str[0], len + 1, nullptr, nullptr);
+        if (wstr.empty()) return std::string();
+        // Query required size (includes terminating null)
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (size_needed <= 0) return std::string();
+        // Allocate string for characters excluding terminating null
+        std::string str(size_needed - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], size_needed, nullptr, nullptr);
         return str;
     }
 
     std::string GenerateUniqueTempDir() {
-        std::time_t now = std::time(nullptr);
+        // Use timestamp + random suffix with safe chars only
+        using namespace std::chrono;
+        auto now = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+        // small random suffix
+        std::mt19937_64 rng(static_cast<uint64_t>(now) ^ std::random_device{}());
+        uint64_t r = rng();
         std::stringstream ss;
-        ss << "bintemp_" << now;
-        return ss.str();
+        ss << "bintemp_" << now << "_" << std::hex << (r & 0xffffffff);
+        std::string name = ss.str();
+        // sanitize just in case (only allow alnum, '-', '_')
+        std::string out;
+        out.reserve(name.size());
+        for (char c : name) {
+            if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '-' || c == '_') {
+                out.push_back(c);
+            } else {
+                out.push_back('_');
+            }
+        }
+        return out;
     }
 
     bool IsRestrictedFile(const std::filesystem::path& path) {
