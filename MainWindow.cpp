@@ -19,6 +19,7 @@
 #include <set>
 #include <regex>
 #include <algorithm>
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     static HWND hList;
     static BinEditor* editor = nullptr;
@@ -136,10 +137,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                         std::filesystem::path filePath = editor->GetTempDir() / itemPath;
                         std::string ext = filePath.extension().string();
                         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+                        // Images -> image preview
                         if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".bmp") {
                             AppendMenuW(hMenu, MF_STRING, ID_PREVIEW_IMAGE, L"Preview Image");
-                        } else if (ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".wma") {
-                            AppendMenuW(hMenu, MF_STRING, ID_PREVIEW_AUDIO, L"Preview Audio");
+                        } else {
+                            // Allow preview/open for audio, video, html, pdf and text files
+                            static const std::set<std::string> openableExts = {
+                                // audio/video
+                                ".mp3", ".wav", ".ogg", ".wma", ".flac", ".aac", ".m4a",
+                                ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".webm",
+                                // documents / web
+                                ".html", ".htm", ".pdf",
+                                // text / source
+                                ".txt", ".md", ".cpp", ".c", ".hpp", ".h", ".cs", ".java", ".py", ".json", ".xml", ".ini", ".log", ".csv"
+                            };
+                            if (openableExts.find(ext) != openableExts.end()) {
+                                AppendMenuW(hMenu, MF_STRING, ID_PREVIEW_AUDIO, L"Preview / Open");
+                            }
                         }
                     }
                 }
@@ -1256,21 +1271,49 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 contextIndex = -1;
                 return 0;
             }
-            std::wstring* wAudioPath = new std::wstring(filePath.wstring());
-            int x = (GetSystemMetrics(SM_CXSCREEN) - 300) / 2;
-            int y = (GetSystemMetrics(SM_CYSCREEN) - 100) / 2;
-            HWND hAudioPreview = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, L"AudioPreviewClass", L"Audio Preview",
-                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE, x, y, 300, 100, hwnd, nullptr, GetModuleHandle(nullptr), wAudioPath);
-            if (!hAudioPreview) {
-                delete wAudioPath;
-                MessageBoxW(hwnd, L"Failed to create audio preview window.", L"Error", MB_OK | MB_ICONERROR);
+
+            std::string ext = filePath.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+            // Internal audio preview for these extensions
+            if (ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".wma") {
+                std::wstring* wAudioPath = new std::wstring(filePath.wstring());
+                int x = (GetSystemMetrics(SM_CXSCREEN) - 300) / 2;
+                int y = (GetSystemMetrics(SM_CYSCREEN) - 100) / 2;
+                HWND hAudioPreview = CreateWindowExW(WS_EX_OVERLAPPEDWINDOW, L"AudioPreviewClass", L"Audio Preview",
+                    WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_VISIBLE, x, y, 300, 100, hwnd, nullptr, GetModuleHandle(nullptr), wAudioPath);
+                if (!hAudioPreview) {
+                    delete wAudioPath;
+                    MessageBoxW(hwnd, L"Failed to create audio preview window.", L"Error", MB_OK | MB_ICONERROR);
+                    contextIndex = -1;
+                    return 0;
+                }
+                ShowWindow(hAudioPreview, SW_SHOW);
+                UpdateWindow(hAudioPreview);
                 contextIndex = -1;
                 return 0;
             }
-            ShowWindow(hAudioPreview, SW_SHOW);
-            UpdateWindow(hAudioPreview);
-            contextIndex = -1;
-            return 0;
+
+            // For html/pdf -> open with default system handler (usually default browser or PDF viewer).
+            if (ext == ".html" || ext == ".htm" || ext == ".pdf") {
+                HINSTANCE res = ShellExecuteW(hwnd, L"open", filePath.wstring().c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+                if ((INT_PTR)res <= 32) {
+                    MessageBoxW(hwnd, L"Failed to open file with default application.", L"Error", MB_OK | MB_ICONERROR);
+                }
+                contextIndex = -1;
+                return 0;
+            }
+
+            // For other media (video) or text/source files: open with default associated application.
+            // This will open with Notepad if the system default is Notepad, or with user's preferred editor.
+            {
+                HINSTANCE res = ShellExecuteW(hwnd, L"open", filePath.wstring().c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+                if ((INT_PTR)res <= 32) {
+                    MessageBoxW(hwnd, L"Failed to open file with default application.", L"Error", MB_OK | MB_ICONERROR);
+                }
+                contextIndex = -1;
+                return 0;
+            }
         }
         case IDM_SORT_NAME: {
             std::sort(editor->GetEntriesMutable().begin(), editor->GetEntriesMutable().end(),
